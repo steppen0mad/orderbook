@@ -15,7 +15,7 @@ Supports **buy/sell orders**, **price-time priority matching**, and basic order 
 
 ---
 
-## Technical Details
+## Details
 
 - Implemented in **C++20**  
 - Uses:
