@@ -75,11 +75,3 @@ Current snapshot performance (100,000 operations, single-threaded, -O3):
 - **Separation of Engine vs Book**:
   - The `OrderBook` class is a dumb container. The `MatchingEngine` contains the logic. This allows easier testing and swapping of matching algorithms.
 
-## Future Optimizations for Low Latency
-
-For a production HFT system, the following changes would be made:
-1. **Memory Pooling**: Replace `new`/`delete` with a pre-allocated object pool to eliminate heap allocation overhead.
-2. **Flat Maps / Arrays**: Replace `std::map` with a fixed-size array (if price ticks are integer/bounded) or a cache-friendly flat map.
-3. **Intrusive Lists**: Use intrusive linked lists for orders to improve cache locality and reduce pointer chasing.
-4. **Lock-Free Structures**: For multi-threaded access (though single-threaded pinning is often preferred for the matching core).
-
