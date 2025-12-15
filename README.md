@@ -1,35 +1,85 @@
-# Limit Order Book Simulator
+# Order Book
 
-A C++ implementation of a **simple limit order book** for educational and prototyping purposes.  
-Supports **buy/sell orders**, **price-time priority matching**, and basic order management (add, cancel, modify).
-
----
+A high-performance, deterministic Limit Order Book (LOB) implementation in C++.
 
 ## Features
 
-- **Add, cancel, and modify orders**  
-- **Automatic matching** based on **price-time priority**  
-- **Bid/ask price levels** with FIFO ordering per price level  
-- **Trade reporting** in console output  
-- **Query best bid and best ask** at any time  
+- **Determinism**: Replayable from CSV input for backtesting and debugging.
+- **Validation**: Strict invariant checking (e.g., crossed book, negative quantities) after every state change (optional for benchmarks).
+- **Partial Fills**: Correctly handles multiple matches per aggressor, maintaining FIFO priority for resting orders.
+- **Architecture**: Clean separation of concerns:
+  - **Book**: Pure data structure managing price levels and order storage.
+  - **Engine**: Business logic for matching and order lifecycle.
+  - **IO**: Parsing and input handling.
+  - **Validation**: Debugging and correctness checks.
 
----
+## Build
 
-## Details
+### Standard Build (Debug/Demo)
+Includes full invariant checking and trade logging.
+```bash
+g++ -std=c++17 main.cpp book/order_book.cpp engine/matching_engine.cpp -o orderbook
+```
 
-- Implemented in **C++20**  
-- Uses:
-  - `std::map` for bid/ask order books  
-  - `std::deque` for FIFO queues at each price level  
-  - `std::unordered_map` for fast order ID indexing  
-- Matching logic handles **partial fills** and updates orders in-place  
-- Deterministic and repeatable for consistent results  
-
----
+### High-Performance Benchmark Build
+Disables validation and logging for accurate latency measurement.
+```bash
+g++ -std=c++17 -O3 -DNDEBUG -DDISABLE_VALIDATION -DQUIET_BENCH -DBENCH_COUNT=100000 main.cpp book/order_book.cpp engine/matching_engine.cpp -o orderbook_fast
+```
 
 ## Usage
 
-1. **Clone the repository**
+### Demo Mode
+Runs a hardcoded scenario to demonstrate matching logic.
 ```bash
-git clone https://github.com/<your-username>/orderbook.git
-cd orderbook
+./orderbook
+```
+
+### File Input Mode (Replay)
+Process orders from a CSV file.
+```bash
+./orderbook orders.csv
+```
+**Input format:** `timestamp,order_id,side,price,quantity,action`
+**Example:** `1000,1,Buy,100.0,10,Add`
+
+### Benchmark Mode
+Runs performance tests for Adds and Aggressive Matches.
+```bash
+./orderbook_fast --benchmark
+```
+
+## Benchmark Results
+
+Current snapshot performance (100,000 operations, single-threaded, -O3):
+
+| Operation | Count | Total Time (ns) | Avg Latency (ns/op) |
+|-----------|-------|-----------------|---------------------|
+| **Adds** (Passive) | 100,000 | ~14,276,350 ns | ~142 ns |
+| **Aggressive Matches** | 100,000 | ~7,070,956 ns | ~70 ns |
+
+*Note: "Adds" involves map insertion and index updates. "Aggressive Matches" involves order lookup, matching logic, and deque/map cleanup.*
+
+## Architecture & Design Choices
+
+- **`std::map` for Price Levels**: 
+  - *Why:* Keeps price levels ordered (Best Bid / Best Ask) which is critical for matching.
+  - *Trade-off:* O(log N) insertion/lookup vs O(1) for `unordered_map`.
+  
+- **`std::deque` for Orders**: 
+  - *Why:* Efficient O(1) insertion at back and removal from front (FIFO), unlike `std::vector` which shifts elements.
+  
+- **`std::unordered_map` for Order Index**:
+  - *Why:* O(1) lookup for cancellations and modifications by Order ID.
+
+- **Separation of Engine vs Book**:
+  - The `OrderBook` class is a dumb container. The `MatchingEngine` contains the logic. This allows easier testing and swapping of matching algorithms.
+
+## Future Optimizations for Low Latency
+
+For a production HFT system, the following changes would be made:
+1. **Memory Pooling**: Replace `new`/`delete` with a pre-allocated object pool to eliminate heap allocation overhead.
+2. **Flat Maps / Arrays**: Replace `std::map` with a fixed-size array (if price ticks are integer/bounded) or a cache-friendly flat map.
+3. **Intrusive Lists**: Use intrusive linked lists for orders to improve cache locality and reduce pointer chasing.
+4. **Lock-Free Structures**: For multi-threaded access (though single-threaded pinning is often preferred for the matching core).
+
