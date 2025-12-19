@@ -1,6 +1,6 @@
 # Order Book
 
-A high-performance, deterministic Limit Order Book (LOB) implementation in C++.
+A high-performance and deterministic Limit Order Book (LOB) implementation in C++.
 
 ## Features
 
