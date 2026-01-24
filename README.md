@@ -1,6 +1,6 @@
 # Order Book
 
-My first order book implementation
+My order book implementation
 
 ## Features
 
